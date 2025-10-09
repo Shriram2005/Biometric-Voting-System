@@ -202,7 +202,7 @@ const LoginPage = () => {
                     >
                       <User className="w-5 h-5" />
                       <span className="font-semibold">{recognizedUser.name}</span>
-                      <span className="text-sm opacity-90">({Math.round(recognizedUser.confidence * 100)}%)</span>
+                      <span className="text-sm opacity-90">({Math.round(recognizedUser.confidence)}%)</span>
                     </motion.div>
                   )}
                   
