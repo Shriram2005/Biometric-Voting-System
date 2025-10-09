@@ -12,6 +12,34 @@ This guide will walk you through the complete setup process for the Biometric Fa
 
 ---
 
+## ✨ Latest Features
+
+This voting system includes cutting-edge features:
+
+### 🎯 Live Face Recognition
+- **Real-time name display** during face scan
+- See recognized user's name **before capturing** the image
+- Confidence percentage shown on camera overlay
+- Automatic face detection every 2 seconds
+
+### 🏠 Easy Navigation
+- **Home button** in navigation bar (both User & Admin pages)
+- Quick return to landing page from any authenticated page
+- Seamless user experience
+
+### 🎨 Consistent Theme
+- **Unified color scheme** across all pages
+- Admin login page now matches website theme (primary blue)
+- Professional and cohesive design throughout
+
+### 📸 Enhanced User Experience
+- Candidate images throughout the system
+- Visual feedback with image previews
+- Beautiful card-based layouts
+- Smooth animations and transitions
+
+---
+
 ## System Requirements
 
 ### Minimum Requirements

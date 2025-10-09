@@ -12,6 +12,7 @@ const api = axios.create({
 // User APIs
 export const registerUser = (userData) => api.post('/register', userData);
 export const loginUser = (faceImage) => api.post('/login', { face_image: faceImage });
+export const verifyFace = (faceImage) => api.post('/verify-face', { face_image: faceImage });
 export const getUser = (voterId) => api.get(`/user/${voterId}`);
 export const checkVotingStatus = (voterId) => api.get(`/voting-status/${voterId}`);
 

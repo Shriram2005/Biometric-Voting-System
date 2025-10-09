@@ -1,5 +1,23 @@
 # ⚡ Quick Reference Guide
 
+## ✨ New Features
+
+### Live Face Recognition
+- When logging in, your **name appears on camera** if you're recognized
+- Real-time verification before capturing image
+- Confidence percentage displayed
+
+### Home Navigation
+- **Home button** in navbar (🏠 icon)
+- Available on both Voting and Admin pages
+- Quick return to main landing page
+
+### Unified Theme
+- Consistent blue color scheme across all pages
+- Professional and modern design
+
+---
+
 ## 🚀 Quick Start Commands
 
 ### Check Prerequisites

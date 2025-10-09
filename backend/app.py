@@ -159,6 +159,50 @@ def login_user():
         logger.error(f"Error in login_user: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/verify-face', methods=['POST'])
+def verify_face():
+    """Verify face in real-time without logging in - returns user name if recognized"""
+    try:
+        data = request.json
+        
+        if 'face_image' not in data:
+            return jsonify({'recognized': False}), 200
+        
+        # Extract face encoding from submitted image
+        face_encoding, message = face_service.extract_face_encoding(data['face_image'])
+        
+        if face_encoding is None:
+            return jsonify({'recognized': False}), 200
+        
+        # Get all users with face encodings
+        users = list(db.users.find({}, {'voter_id': 1, 'face_encoding': 1, 'name': 1}))
+        
+        if not users:
+            return jsonify({'recognized': False}), 200
+        
+        # Find matching face
+        voter_id, confidence = face_service.find_matching_face(face_encoding, users)
+        
+        if voter_id is None:
+            return jsonify({'recognized': False}), 200
+        
+        # Get user details
+        user = db.users.find_one({'voter_id': voter_id}, {'name': 1, 'voter_id': 1})
+        
+        if not user:
+            return jsonify({'recognized': False}), 200
+        
+        return jsonify({
+            'recognized': True,
+            'name': user['name'],
+            'voter_id': user['voter_id'],
+            'confidence': round(confidence, 2)
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in verify_face: {e}")
+        return jsonify({'recognized': False}), 200
+
 @app.route('/api/user/<voter_id>', methods=['GET'])
 def get_user(voter_id):
     """Get user details"""
@@ -250,17 +294,31 @@ def cast_vote():
 
 @app.route('/api/voting-status/<voter_id>', methods=['GET'])
 def check_voting_status(voter_id):
-    """Check if user has voted"""
+    """Check if user has voted and get voted candidate info"""
     try:
         user = db.users.find_one({'voter_id': voter_id}, {'has_voted': 1, 'voted_at': 1})
         
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        return jsonify({
+        response_data = {
             'has_voted': user.get('has_voted', False),
-            'voted_at': user.get('voted_at')
-        }), 200
+            'voted_at': user.get('voted_at'),
+            'voted_candidate': None
+        }
+        
+        # If user has voted, get the candidate they voted for
+        if user.get('has_voted', False):
+            vote = db.votes.find_one({'voter_id': voter_id})
+            if vote:
+                candidate = db.candidates.find_one(
+                    {'candidate_id': vote['candidate_id']},
+                    {'_id': 0}
+                )
+                if candidate:
+                    response_data['voted_candidate'] = candidate
+        
+        return jsonify(response_data), 200
         
     except Exception as e:
         logger.error(f"Error in check_voting_status: {e}")

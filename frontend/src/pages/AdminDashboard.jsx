@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import {
   Shield, LogOut, Users, Vote, TrendingUp, Download,
-  UserCheck, UserX, Plus, Edit, Trash2
+  UserCheck, UserX, Plus, Edit, Trash2, Home
 } from 'lucide-react';
 import {
   getAdminStats, getAllUsers, getCandidates, deleteCandidate,
@@ -29,6 +29,13 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState(null);
+  const [candidateForm, setCandidateForm] = useState({
+    candidate_id: '',
+    name: '',
+    party: '',
+    description: '',
+    image_url: ''
+  });
 
   useEffect(() => {
     if (!admin) {
@@ -48,7 +55,19 @@ const AdminDashboard = () => {
 
       setStats(statsRes.data);
       setUsers(usersRes.data);
-      setCandidates(candidatesRes.data);
+      
+      // Merge candidate data with vote counts from stats
+      const candidatesWithVotes = candidatesRes.data.map(candidate => {
+        const statData = statsRes.data.candidate_stats.find(
+          stat => stat.candidate_id === candidate.candidate_id
+        );
+        return {
+          ...candidate,
+          vote_count: statData ? statData.vote_count : 0
+        };
+      });
+      
+      setCandidates(candidatesWithVotes);
       setLoading(false);
     } catch (error) {
       toast.error('Failed to load dashboard data');
@@ -108,6 +127,67 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleAddCandidate = async (e) => {
+    e.preventDefault();
+    try {
+      await addCandidate(candidateForm);
+      toast.success('Candidate added successfully');
+      setShowAddCandidateModal(false);
+      setCandidateForm({
+        candidate_id: '',
+        name: '',
+        party: '',
+        description: '',
+        image_url: ''
+      });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to add candidate');
+    }
+  };
+
+  const handleEditCandidate = async (e) => {
+    e.preventDefault();
+    try {
+      await updateCandidate(editingCandidate.candidate_id, candidateForm);
+      toast.success('Candidate updated successfully');
+      setEditingCandidate(null);
+      setCandidateForm({
+        candidate_id: '',
+        name: '',
+        party: '',
+        description: '',
+        image_url: ''
+      });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to update candidate');
+    }
+  };
+
+  const openEditModal = (candidate) => {
+    setEditingCandidate(candidate);
+    setCandidateForm({
+      candidate_id: candidate.candidate_id,
+      name: candidate.name,
+      party: candidate.party,
+      description: candidate.description,
+      image_url: candidate.image_url || ''
+    });
+  };
+
+  const closeModals = () => {
+    setShowAddCandidateModal(false);
+    setEditingCandidate(null);
+    setCandidateForm({
+      candidate_id: '',
+      name: '',
+      party: '',
+      description: '',
+      image_url: ''
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -138,8 +218,16 @@ const AdminDashboard = () => {
             <div className="flex items-center gap-4">
               <ThemeToggle />
               <button
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+                title="Go to Home"
+              >
+                <Home className="w-4 h-4" />
+                Home
+              </button>
+              <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
               >
                 <LogOut className="w-4 h-4" />
                 Logout
@@ -347,39 +435,59 @@ const AdminDashboard = () => {
                   key={candidate.candidate_id}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6"
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden"
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-white">
-                        {candidate.name}
-                      </h4>
-                      <p className="text-sm text-primary-600">{candidate.party}</p>
-                    </div>
-                    <div className="flex gap-2">
+                  {/* Candidate Image */}
+                  <div className="relative h-48 bg-gradient-to-br from-primary-500 to-purple-500">
+                    <img
+                      src={candidate.image_url}
+                      alt={candidate.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(candidate.name)}&size=400&background=3b82f6&color=fff`;
+                      }}
+                    />
+                    <div className="absolute top-4 right-4 flex gap-2">
                       <button
-                        onClick={() => setEditingCandidate(candidate)}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        onClick={() => openEditModal(candidate)}
+                        className="p-2 bg-white/90 hover:bg-white rounded-lg shadow-lg transition-all"
                       >
                         <Edit className="w-4 h-4 text-blue-600" />
                       </button>
                       <button
                         onClick={() => handleDeleteCandidate(candidate.candidate_id)}
-                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        className="p-2 bg-white/90 hover:bg-white rounded-lg shadow-lg transition-all"
                       >
                         <Trash2 className="w-4 h-4 text-red-600" />
                       </button>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    {candidate.description}
-                  </p>
-                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-gray-500">{candidate.candidate_id}</span>
-                      <span className="text-lg font-bold text-primary-600">
-                        {candidate.vote_count || 0} votes
-                      </span>
+                  
+                  {/* Candidate Info */}
+                  <div className="p-6">
+                    <div className="mb-4">
+                      <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                        {candidate.name}
+                      </h4>
+                      <p className="text-sm text-primary-600 dark:text-primary-400 font-semibold">
+                        {candidate.party}
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                      {candidate.description}
+                    </p>
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          ID: {candidate.candidate_id}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Vote className="w-4 h-4 text-primary-600" />
+                          <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                            {candidate.vote_count || 0}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </motion.div>
@@ -448,6 +556,231 @@ const AdminDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Add Candidate Modal */}
+      {showAddCandidateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Add New Candidate
+              </h3>
+            </div>
+            <form onSubmit={handleAddCandidate} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Candidate ID *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={candidateForm.candidate_id}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, candidate_id: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="e.g., CAND001"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={candidateForm.name}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, name: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter candidate name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Party *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={candidateForm.party}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, party: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter party name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Description *
+                </label>
+                <textarea
+                  required
+                  value={candidateForm.description}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, description: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter candidate description"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Image URL
+                </label>
+                <input
+                  type="url"
+                  value={candidateForm.image_url}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, image_url: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="https://example.com/image.jpg or leave empty for default"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Leave empty to use default avatar
+                </p>
+                {/* Image Preview */}
+                {candidateForm.image_url && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview:</p>
+                    <img
+                      src={candidateForm.image_url}
+                      alt="Preview"
+                      className="w-32 h-32 rounded-lg object-cover border-2 border-gray-300 dark:border-gray-600"
+                      onError={(e) => {
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(candidateForm.name || 'User')}&size=200&background=3b82f6&color=fff`;
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold"
+                >
+                  Add Candidate
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModals}
+                  className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-lg font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Candidate Modal */}
+      {editingCandidate && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Edit Candidate
+              </h3>
+            </div>
+            <form onSubmit={handleEditCandidate} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Candidate ID
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value={candidateForm.candidate_id}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-900 dark:text-gray-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={candidateForm.name}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, name: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Party *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={candidateForm.party}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, party: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Description *
+                </label>
+                <textarea
+                  required
+                  value={candidateForm.description}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, description: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Image URL
+                </label>
+                <input
+                  type="url"
+                  value={candidateForm.image_url}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, image_url: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="https://example.com/image.jpg or leave empty for default"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Leave empty to use default avatar
+                </p>
+                {/* Image Preview */}
+                {candidateForm.image_url && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview:</p>
+                    <img
+                      src={candidateForm.image_url}
+                      alt="Preview"
+                      className="w-32 h-32 rounded-lg object-cover border-2 border-gray-300 dark:border-gray-600"
+                      onError={(e) => {
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(candidateForm.name || 'User')}&size=200&background=3b82f6&color=fff`;
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold"
+                >
+                  Update Candidate
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModals}
+                  className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-lg font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 };

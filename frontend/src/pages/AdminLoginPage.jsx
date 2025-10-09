@@ -52,11 +52,11 @@ const AdminLoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 py-12 px-4 flex items-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 py-12 px-4 flex items-center">
       {/* Header */}
       <div className="absolute top-6 left-6 right-6 flex justify-between items-center">
         <Link to="/">
-          <button className="flex items-center gap-2 text-gray-300 hover:text-white">
+          <button className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-primary-600 dark:hover:text-white transition-colors">
             <ArrowLeft className="w-5 h-5" />
             Back to Home
           </button>
@@ -69,15 +69,15 @@ const AdminLoginPage = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden"
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700"
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-red-600 to-purple-600 px-8 py-8 text-center">
+          <div className="bg-gradient-to-r from-primary-600 to-purple-600 px-8 py-8 text-center">
             <div className="w-20 h-20 mx-auto bg-white/20 backdrop-blur rounded-full flex items-center justify-center mb-4">
               <Shield className="w-10 h-10 text-white" />
             </div>
             <h2 className="text-3xl font-bold text-white">Admin Portal</h2>
-            <p className="text-red-100 mt-2">Authorized Access Only</p>
+            <p className="text-primary-100 mt-2">Authorized Access Only</p>
           </div>
 
           {/* Form */}
@@ -95,7 +95,7 @@ const AdminLoginPage = () => {
                     name="username"
                     value={formData.username}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                     placeholder="Enter admin username"
                     required
                   />
@@ -114,7 +114,7 @@ const AdminLoginPage = () => {
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                     placeholder="Enter admin password"
                     required
                   />
@@ -125,7 +125,7 @@ const AdminLoginPage = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-lg font-semibold text-lg shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all duration-300 transform hover:scale-[1.02] hover:shadow-xl"
               >
                 {loading ? (
                   <>
