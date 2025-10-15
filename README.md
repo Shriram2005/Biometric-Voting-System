@@ -28,6 +28,7 @@ A complete, modern, and secure voting system using **face recognition** technolo
 - 📈 **Interactive Charts** - Bar charts and pie charts for vote distribution
 - 👥 **Voter Management** - View all registered voters and their status
 - 🎯 **Candidate Management** - Add, edit, and remove candidates
+- 🎉 **Party Management** - Create and manage political parties ✨ **NEW**
 - 📥 **Export Reports** - Download results as CSV or PDF
 
 ### Security

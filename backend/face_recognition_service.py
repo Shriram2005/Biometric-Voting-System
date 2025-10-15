@@ -29,8 +29,22 @@ class FaceRecognitionService:
             # Convert bytes to PIL Image
             image = Image.open(io.BytesIO(image_bytes))
             
-            # Convert PIL Image to RGB numpy array
-            image_array = np.array(image.convert('RGB'))
+            # Ensure image is in RGB mode (not RGBA, P, L, etc.)
+            if image.mode != 'RGB':
+                # Convert to RGB (8-bit, 3 channels)
+                image = image.convert('RGB')
+            
+            # Convert PIL Image to RGB numpy array (uint8)
+            image_array = np.array(image, dtype=np.uint8)
+            
+            # Verify array format
+            if len(image_array.shape) != 3 or image_array.shape[2] != 3:
+                logger.error(f"Invalid image shape: {image_array.shape}")
+                return None
+            
+            if image_array.dtype != np.uint8:
+                logger.error(f"Invalid image dtype: {image_array.dtype}")
+                return None
             
             return image_array
         except Exception as e:
@@ -52,28 +66,53 @@ class FaceRecognitionService:
             if isinstance(image_data, str):
                 image_array = self.decode_base64_image(image_data)
                 if image_array is None:
-                    return None, "Failed to decode image"
+                    return None, "Failed to decode image. Please ensure image is in valid format."
             else:
                 image_array = image_data
+                # Ensure numpy array is uint8 RGB
+                if image_array.dtype != np.uint8:
+                    image_array = image_array.astype(np.uint8)
+            
+            # Verify image array is valid
+            if not isinstance(image_array, np.ndarray):
+                return None, "Invalid image data format"
+            
+            if len(image_array.shape) != 3:
+                return None, "Image must be RGB (3 channels)"
+            
+            if image_array.shape[2] not in [3, 4]:
+                return None, "Image must have 3 (RGB) or 4 (RGBA) channels"
+            
+            # Convert RGBA to RGB if needed
+            if image_array.shape[2] == 4:
+                # Remove alpha channel
+                image_array = image_array[:, :, :3]
+            
+            # Ensure dtype is uint8
+            if image_array.dtype != np.uint8:
+                image_array = image_array.astype(np.uint8)
+            
+            logger.info(f"Processing image with shape: {image_array.shape}, dtype: {image_array.dtype}")
             
             # Find face locations
             face_locations = face_recognition.face_locations(image_array)
             
             if len(face_locations) == 0:
-                return None, "No face detected in the image"
+                return None, "No face detected in the image. Please ensure your face is clearly visible."
             
             if len(face_locations) > 1:
-                return None, "Multiple faces detected. Please ensure only one face is visible"
+                return None, "Multiple faces detected. Please ensure only one face is visible."
             
             # Get face encoding
             face_encodings = face_recognition.face_encodings(image_array, face_locations)
             
             if len(face_encodings) == 0:
-                return None, "Could not encode face"
+                return None, "Could not encode face. Please try again with better lighting."
             
             # Convert numpy array to list for MongoDB storage
             face_encoding = face_encodings[0].tolist()
             
+            logger.info("Face encoding extracted successfully")
             return face_encoding, "Face encoding extracted successfully"
             
         except Exception as e:

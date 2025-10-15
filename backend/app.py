@@ -415,7 +415,7 @@ def add_candidate():
     try:
         data = request.json
         
-        required_fields = ['candidate_id', 'name', 'party', 'description']
+        required_fields = ['candidate_id', 'name', 'party_id', 'description']
         for field in required_fields:
             if field not in data:
                 return jsonify({'error': f'Missing required field: {field}'}), 400
@@ -424,10 +424,16 @@ def add_candidate():
         if db.candidates.find_one({'candidate_id': data['candidate_id']}):
             return jsonify({'error': 'Candidate ID already exists'}), 400
         
+        # Check if party exists and get party name
+        party = db.parties.find_one({'party_id': data['party_id']})
+        if not party:
+            return jsonify({'error': 'Invalid party ID'}), 400
+        
         candidate = {
             'candidate_id': data['candidate_id'],
             'name': data['name'],
-            'party': data['party'],
+            'party_id': data['party_id'],
+            'party': party['name'],  # Store party name for easy access
             'description': data['description'],
             'image_url': data.get('image_url', 'https://via.placeholder.com/300x300?text=Candidate'),
             'created_at': datetime.utcnow()
@@ -457,11 +463,18 @@ def update_candidate(candidate_id):
             return jsonify({'error': 'Candidate not found'}), 404
         
         update_data = {}
-        allowed_fields = ['name', 'party', 'description', 'image_url']
+        allowed_fields = ['name', 'party_id', 'description', 'image_url']
         
         for field in allowed_fields:
             if field in data:
                 update_data[field] = data[field]
+        
+        # If party_id changed, update party name too
+        if 'party_id' in update_data:
+            party = db.parties.find_one({'party_id': update_data['party_id']})
+            if not party:
+                return jsonify({'error': 'Invalid party ID'}), 400
+            update_data['party'] = party['name']
         
         if not update_data:
             return jsonify({'error': 'No fields to update'}), 400
@@ -660,6 +673,146 @@ def export_results_pdf():
         
     except Exception as e:
         logger.error(f"Error in export_results_pdf: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ==================== PARTY MANAGEMENT ROUTES ====================
+
+@app.route('/api/parties', methods=['GET'])
+def get_parties():
+    """Get all parties"""
+    try:
+        parties = list(db.parties.find())
+        
+        # Add candidate count to each party
+        for party in parties:
+            candidate_count = db.candidates.count_documents({'party_id': party['party_id']})
+            party['candidate_count'] = candidate_count
+        
+        return jsonify(serialize_doc(parties)), 200
+        
+    except Exception as e:
+        logger.error(f"Error in get_parties: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/party', methods=['POST'])
+def add_party():
+    """Add a new party"""
+    try:
+        data = request.json
+        
+        required_fields = ['party_id', 'name', 'abbreviation', 'color', 'description']
+        for field in required_fields:
+            if field not in data:
+                return jsonify({'error': f'Missing required field: {field}'}), 400
+        
+        # Check if party_id already exists
+        if db.parties.find_one({'party_id': data['party_id']}):
+            return jsonify({'error': 'Party ID already exists'}), 400
+        
+        # Check if party name already exists
+        if db.parties.find_one({'name': data['name']}):
+            return jsonify({'error': 'Party name already exists'}), 400
+        
+        party = {
+            'party_id': data['party_id'],
+            'name': data['name'],
+            'abbreviation': data['abbreviation'],
+            'color': data['color'],
+            'description': data['description'],
+            'logo_url': data.get('logo_url', 'https://via.placeholder.com/150x150?text=Party'),
+            'founded_date': data.get('founded_date', ''),
+            'created_at': datetime.utcnow()
+        }
+        
+        db.parties.insert_one(party)
+        
+        logger.info(f"Party added: {data['party_id']}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Party added successfully'
+        }), 201
+        
+    except Exception as e:
+        logger.error(f"Error in add_party: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/party/<party_id>', methods=['PUT'])
+def update_party(party_id):
+    """Update party details"""
+    try:
+        data = request.json
+        
+        # Check if party exists
+        if not db.parties.find_one({'party_id': party_id}):
+            return jsonify({'error': 'Party not found'}), 404
+        
+        update_data = {}
+        allowed_fields = ['name', 'abbreviation', 'color', 'description', 'logo_url', 'founded_date']
+        
+        for field in allowed_fields:
+            if field in data:
+                # Check if new name conflicts with existing party
+                if field == 'name' and data[field]:
+                    existing = db.parties.find_one({'name': data[field]})
+                    if existing and existing['party_id'] != party_id:
+                        return jsonify({'error': 'Party name already exists'}), 400
+                update_data[field] = data[field]
+        
+        if not update_data:
+            return jsonify({'error': 'No fields to update'}), 400
+        
+        update_data['updated_at'] = datetime.utcnow()
+        
+        db.parties.update_one(
+            {'party_id': party_id},
+            {'$set': update_data}
+        )
+        
+        # If party name changed, update all candidates' party name
+        if 'name' in update_data:
+            db.candidates.update_many(
+                {'party_id': party_id},
+                {'$set': {'party': update_data['name']}}
+            )
+        
+        logger.info(f"Party updated: {party_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Party updated successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in update_party: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/party/<party_id>', methods=['DELETE'])
+def delete_party(party_id):
+    """Delete a party"""
+    try:
+        # Check if party has candidates
+        candidate_count = db.candidates.count_documents({'party_id': party_id})
+        
+        if candidate_count > 0:
+            return jsonify({
+                'error': f'Cannot delete party with {candidate_count} candidates. Remove candidates first.'
+            }), 400
+        
+        result = db.parties.delete_one({'party_id': party_id})
+        
+        if result.deleted_count == 0:
+            return jsonify({'error': 'Party not found'}), 404
+        
+        logger.info(f"Party deleted: {party_id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Party deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error in delete_party: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ==================== HEALTH CHECK ====================

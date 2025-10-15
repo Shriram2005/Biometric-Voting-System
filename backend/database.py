@@ -43,19 +43,71 @@ class Database:
             self.db.votes.create_index([("voter_id", ASCENDING)])
             self.db.votes.create_index([("timestamp", ASCENDING)])
             
+            # Parties collection indexes
+            self.db.parties.create_index([("party_id", ASCENDING)], unique=True)
+            self.db.parties.create_index([("name", ASCENDING)], unique=True)
+            
             logger.info("Database indexes created successfully")
         except Exception as e:
             logger.error(f"Error creating indexes: {e}")
     
     def _initialize_sample_data(self):
-        """Initialize sample candidates and admin if not exists"""
+        """Initialize sample parties, candidates and admin if not exists"""
         try:
+            # Initialize sample parties if collection is empty
+            if self.db.parties.count_documents({}) == 0:
+                sample_parties = [
+                    {
+                        "party_id": "PARTY001",
+                        "name": "Progressive Party",
+                        "abbreviation": "PP",
+                        "color": "#3b82f6",  # Blue
+                        "description": "A party focused on progressive reforms, education, and healthcare",
+                        "logo_url": "https://via.placeholder.com/150x150?text=PP",
+                        "founded_date": "2020-01-15",
+                        "created_at": datetime.utcnow()
+                    },
+                    {
+                        "party_id": "PARTY002",
+                        "name": "Unity Alliance",
+                        "abbreviation": "UA",
+                        "color": "#10b981",  # Green
+                        "description": "United for environmental protection and economic growth",
+                        "logo_url": "https://via.placeholder.com/150x150?text=UA",
+                        "founded_date": "2019-03-20",
+                        "created_at": datetime.utcnow()
+                    },
+                    {
+                        "party_id": "PARTY003",
+                        "name": "Innovation Front",
+                        "abbreviation": "IF",
+                        "color": "#8b5cf6",  # Purple
+                        "description": "Driving digital transformation and technological advancement",
+                        "logo_url": "https://via.placeholder.com/150x150?text=IF",
+                        "founded_date": "2021-06-10",
+                        "created_at": datetime.utcnow()
+                    },
+                    {
+                        "party_id": "PARTY004",
+                        "name": "People's Choice",
+                        "abbreviation": "PC",
+                        "color": "#f59e0b",  # Orange
+                        "description": "Champions of social justice and community empowerment",
+                        "logo_url": "https://via.placeholder.com/150x150?text=PC",
+                        "founded_date": "2018-09-05",
+                        "created_at": datetime.utcnow()
+                    }
+                ]
+                self.db.parties.insert_many(sample_parties)
+                logger.info("Sample parties initialized")
+            
             # Initialize sample candidates if collection is empty
             if self.db.candidates.count_documents({}) == 0:
                 sample_candidates = [
                     {
                         "candidate_id": "CAND001",
                         "name": "John Smith",
+                        "party_id": "PARTY001",  # Progressive Party
                         "party": "Progressive Party",
                         "description": "Experienced leader with focus on education and healthcare",
                         "image_url": "https://via.placeholder.com/300x300?text=John+Smith",
@@ -64,6 +116,7 @@ class Database:
                     {
                         "candidate_id": "CAND002",
                         "name": "Sarah Johnson",
+                        "party_id": "PARTY002",  # Unity Alliance
                         "party": "Unity Alliance",
                         "description": "Advocate for environmental protection and economic growth",
                         "image_url": "https://via.placeholder.com/300x300?text=Sarah+Johnson",
@@ -72,6 +125,7 @@ class Database:
                     {
                         "candidate_id": "CAND003",
                         "name": "Michael Chen",
+                        "party_id": "PARTY003",  # Innovation Front
                         "party": "Innovation Front",
                         "description": "Tech entrepreneur focused on digital transformation",
                         "image_url": "https://via.placeholder.com/300x300?text=Michael+Chen",
@@ -80,6 +134,7 @@ class Database:
                     {
                         "candidate_id": "CAND004",
                         "name": "Emily Rodriguez",
+                        "party_id": "PARTY004",  # People's Choice
                         "party": "People's Choice",
                         "description": "Social justice advocate and community organizer",
                         "image_url": "https://via.placeholder.com/300x300?text=Emily+Rodriguez",

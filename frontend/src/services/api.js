@@ -24,10 +24,21 @@ export const castVote = (voteData) => api.post('/vote', voteData);
 export const adminLogin = (credentials) => api.post('/admin/login', credentials);
 export const getAdminStats = () => api.get('/admin/stats');
 export const getAllUsers = () => api.get('/admin/users');
+
+// Candidate APIs
 export const addCandidate = (candidateData) => api.post('/admin/candidate', candidateData);
 export const updateCandidate = (candidateId, candidateData) => 
   api.put(`/admin/candidate/${candidateId}`, candidateData);
 export const deleteCandidate = (candidateId) => api.delete(`/admin/candidate/${candidateId}`);
+
+// Party APIs
+export const getParties = () => api.get('/parties');
+export const addParty = (partyData) => api.post('/admin/party', partyData);
+export const updateParty = (partyId, partyData) => 
+  api.put(`/admin/party/${partyId}`, partyData);
+export const deleteParty = (partyId) => api.delete(`/admin/party/${partyId}`);
+
+// Export APIs
 export const exportCSV = () => api.get('/admin/export/csv', { responseType: 'blob' });
 export const exportPDF = () => api.get('/admin/export/pdf', { responseType: 'blob' });
 

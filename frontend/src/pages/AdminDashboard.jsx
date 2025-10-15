@@ -8,11 +8,12 @@ import {
 } from 'recharts';
 import {
   Shield, LogOut, Users, Vote, TrendingUp, Download,
-  UserCheck, UserX, Plus, Edit, Trash2, Home
+  UserCheck, UserX, Plus, Edit, Trash2, Home, Flag
 } from 'lucide-react';
 import {
   getAdminStats, getAllUsers, getCandidates, deleteCandidate,
-  exportCSV, exportPDF, addCandidate, updateCandidate
+  exportCSV, exportPDF, addCandidate, updateCandidate,
+  getParties, addParty, updateParty, deleteParty
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import ThemeToggle from '../components/ThemeToggle';
@@ -25,16 +26,32 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [candidates, setCandidates] = useState([]);
+  const [parties, setParties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Candidate modals
   const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState(null);
   const [candidateForm, setCandidateForm] = useState({
     candidate_id: '',
     name: '',
-    party: '',
+    party_id: '',
     description: '',
     image_url: ''
+  });
+  
+  // Party modals
+  const [showAddPartyModal, setShowAddPartyModal] = useState(false);
+  const [editingParty, setEditingParty] = useState(null);
+  const [partyForm, setPartyForm] = useState({
+    party_id: '',
+    name: '',
+    abbreviation: '',
+    color: '#3b82f6',
+    description: '',
+    logo_url: '',
+    founded_date: ''
   });
 
   useEffect(() => {
@@ -47,10 +64,11 @@ const AdminDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [statsRes, usersRes, candidatesRes] = await Promise.all([
+      const [statsRes, usersRes, candidatesRes, partiesRes] = await Promise.all([
         getAdminStats(),
         getAllUsers(),
         getCandidates(),
+        getParties(),
       ]);
 
       setStats(statsRes.data);
@@ -68,6 +86,7 @@ const AdminDashboard = () => {
       });
       
       setCandidates(candidatesWithVotes);
+      setParties(partiesRes.data);
       setLoading(false);
     } catch (error) {
       toast.error('Failed to load dashboard data');
@@ -136,7 +155,7 @@ const AdminDashboard = () => {
       setCandidateForm({
         candidate_id: '',
         name: '',
-        party: '',
+        party_id: '',
         description: '',
         image_url: ''
       });
@@ -155,7 +174,7 @@ const AdminDashboard = () => {
       setCandidateForm({
         candidate_id: '',
         name: '',
-        party: '',
+        party_id: '',
         description: '',
         image_url: ''
       });
@@ -170,7 +189,7 @@ const AdminDashboard = () => {
     setCandidateForm({
       candidate_id: candidate.candidate_id,
       name: candidate.name,
-      party: candidate.party,
+      party_id: candidate.party_id,
       description: candidate.description,
       image_url: candidate.image_url || ''
     });
@@ -182,10 +201,91 @@ const AdminDashboard = () => {
     setCandidateForm({
       candidate_id: '',
       name: '',
-      party: '',
+      party_id: '',
       description: '',
       image_url: ''
     });
+    setShowAddPartyModal(false);
+    setEditingParty(null);
+    setPartyForm({
+      party_id: '',
+      name: '',
+      abbreviation: '',
+      color: '#3b82f6',
+      description: '',
+      logo_url: '',
+      founded_date: ''
+    });
+  };
+  
+  // Party Management Functions
+  const handleAddParty = async (e) => {
+    e.preventDefault();
+    try {
+      await addParty(partyForm);
+      toast.success('Party added successfully');
+      setShowAddPartyModal(false);
+      setPartyForm({
+        party_id: '',
+        name: '',
+        abbreviation: '',
+        color: '#3b82f6',
+        description: '',
+        logo_url: '',
+        founded_date: ''
+      });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to add party');
+    }
+  };
+
+  const handleEditParty = async (e) => {
+    e.preventDefault();
+    try {
+      await updateParty(editingParty.party_id, partyForm);
+      toast.success('Party updated successfully');
+      setEditingParty(null);
+      setPartyForm({
+        party_id: '',
+        name: '',
+        abbreviation: '',
+        color: '#3b82f6',
+        description: '',
+        logo_url: '',
+        founded_date: ''
+      });
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to update party');
+    }
+  };
+
+  const openEditPartyModal = (party) => {
+    setEditingParty(party);
+    setPartyForm({
+      party_id: party.party_id,
+      name: party.name,
+      abbreviation: party.abbreviation,
+      color: party.color,
+      description: party.description,
+      logo_url: party.logo_url || '',
+      founded_date: party.founded_date || ''
+    });
+  };
+
+  const handleDeleteParty = async (partyId) => {
+    if (!window.confirm('Are you sure you want to delete this party? All candidates must be removed first.')) {
+      return;
+    }
+
+    try {
+      await deleteParty(partyId);
+      toast.success('Party deleted successfully');
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Failed to delete party');
+    }
   };
 
   if (loading) {
@@ -241,7 +341,7 @@ const AdminDashboard = () => {
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="container mx-auto px-6">
           <div className="flex gap-6">
-            {['overview', 'candidates', 'voters'].map((tab) => (
+            {['overview', 'parties', 'candidates', 'voters'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -410,6 +510,96 @@ const AdminDashboard = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'parties' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Manage Parties
+              </h3>
+              <button
+                onClick={() => setShowAddPartyModal(true)}
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Add Party
+              </button>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {parties.map((party) => (
+                <motion.div
+                  key={party.party_id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden"
+                >
+                  {/* Party Header */}
+                  <div 
+                    className="h-24 relative"
+                    style={{ backgroundColor: party.color }}
+                  >
+                    <div className="absolute top-4 right-4 flex gap-2">
+                      <button
+                        onClick={() => openEditPartyModal(party)}
+                        className="p-2 bg-white/90 hover:bg-white rounded-lg shadow-lg transition-all"
+                      >
+                        <Edit className="w-4 h-4 text-blue-600" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteParty(party.party_id)}
+                        className="p-2 bg-white/90 hover:bg-white rounded-lg shadow-lg transition-all"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
+                    </div>
+                    <div className="absolute -bottom-8 left-6">
+                      <div 
+                        className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold border-4 border-white dark:border-gray-800 shadow-lg"
+                        style={{ backgroundColor: party.color }}
+                      >
+                        {party.abbreviation}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Party Info */}
+                  <div className="p-6 pt-12">
+                    <div className="mb-4">
+                      <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-1">
+                        {party.name}
+                      </h4>
+                      <p className="text-sm text-primary-600 dark:text-primary-400 font-semibold">
+                        {party.abbreviation}
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-3">
+                      {party.description}
+                    </p>
+                    {party.founded_date && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                        Founded: {new Date(party.founded_date).toLocaleDateString()}
+                      </p>
+                    )}
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          ID: {party.party_id}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <Flag className="w-4 h-4 text-primary-600" />
+                          <span className="text-lg font-bold text-primary-600 dark:text-primary-400">
+                            {party.candidate_count || 0} candidates
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </div>
         )}
@@ -601,14 +791,19 @@ const AdminDashboard = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Party *
                 </label>
-                <input
-                  type="text"
+                <select
                   required
-                  value={candidateForm.party}
-                  onChange={(e) => setCandidateForm({ ...candidateForm, party: e.target.value })}
+                  value={candidateForm.party_id}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, party_id: e.target.value })}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
-                  placeholder="Enter party name"
-                />
+                >
+                  <option value="">Select a party</option>
+                  {parties.map((party) => (
+                    <option key={party.party_id} value={party.party_id}>
+                      {party.name} ({party.abbreviation})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -713,13 +908,19 @@ const AdminDashboard = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Party *
                 </label>
-                <input
-                  type="text"
+                <select
                   required
-                  value={candidateForm.party}
-                  onChange={(e) => setCandidateForm({ ...candidateForm, party: e.target.value })}
+                  value={candidateForm.party_id}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, party_id: e.target.value })}
                   className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
-                />
+                >
+                  <option value="">Select a party</option>
+                  {parties.map((party) => (
+                    <option key={party.party_id} value={party.party_id}>
+                      {party.name} ({party.abbreviation})
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -768,6 +969,263 @@ const AdminDashboard = () => {
                   className="flex-1 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold"
                 >
                   Update Candidate
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModals}
+                  className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-lg font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Add Party Modal */}
+      {showAddPartyModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Add New Party
+              </h3>
+            </div>
+            <form onSubmit={handleAddParty} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Party ID *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={partyForm.party_id}
+                  onChange={(e) => setPartyForm({ ...partyForm, party_id: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="e.g., PARTY001"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Party Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={partyForm.name}
+                  onChange={(e) => setPartyForm({ ...partyForm, name: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter party name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Abbreviation *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={partyForm.abbreviation}
+                  onChange={(e) => setPartyForm({ ...partyForm, abbreviation: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="e.g., PP"
+                  maxLength={5}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Party Color *
+                </label>
+                <div className="flex gap-3 items-center">
+                  <input
+                    type="color"
+                    required
+                    value={partyForm.color}
+                    onChange={(e) => setPartyForm({ ...partyForm, color: e.target.value })}
+                    className="h-12 w-20 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={partyForm.color}
+                    onChange={(e) => setPartyForm({ ...partyForm, color: e.target.value })}
+                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="#3b82f6"
+                    pattern="^#[0-9A-Fa-f]{6}$"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Description *
+                </label>
+                <textarea
+                  required
+                  value={partyForm.description}
+                  onChange={(e) => setPartyForm({ ...partyForm, description: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter party description"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Founded Date
+                </label>
+                <input
+                  type="date"
+                  value={partyForm.founded_date}
+                  onChange={(e) => setPartyForm({ ...partyForm, founded_date: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Logo URL
+                </label>
+                <input
+                  type="url"
+                  value={partyForm.logo_url}
+                  onChange={(e) => setPartyForm({ ...partyForm, logo_url: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="https://example.com/logo.png"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold"
+                >
+                  Add Party
+                </button>
+                <button
+                  type="button"
+                  onClick={closeModals}
+                  className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-lg font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Party Modal */}
+      {editingParty && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Edit Party
+              </h3>
+            </div>
+            <form onSubmit={handleEditParty} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Party ID
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value={partyForm.party_id}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-900 dark:text-gray-400"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Party Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={partyForm.name}
+                  onChange={(e) => setPartyForm({ ...partyForm, name: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Abbreviation *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={partyForm.abbreviation}
+                  onChange={(e) => setPartyForm({ ...partyForm, abbreviation: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                  maxLength={5}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Party Color *
+                </label>
+                <div className="flex gap-3 items-center">
+                  <input
+                    type="color"
+                    required
+                    value={partyForm.color}
+                    onChange={(e) => setPartyForm({ ...partyForm, color: e.target.value })}
+                    className="h-12 w-20 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={partyForm.color}
+                    onChange={(e) => setPartyForm({ ...partyForm, color: e.target.value })}
+                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                    pattern="^#[0-9A-Fa-f]{6}$"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Description *
+                </label>
+                <textarea
+                  required
+                  value={partyForm.description}
+                  onChange={(e) => setPartyForm({ ...partyForm, description: e.target.value })}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Founded Date
+                </label>
+                <input
+                  type="date"
+                  value={partyForm.founded_date}
+                  onChange={(e) => setPartyForm({ ...partyForm, founded_date: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Logo URL
+                </label>
+                <input
+                  type="url"
+                  value={partyForm.logo_url}
+                  onChange={(e) => setPartyForm({ ...partyForm, logo_url: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-semibold"
+                >
+                  Update Party
                 </button>
                 <button
                   type="button"
