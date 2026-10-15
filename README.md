@@ -7,6 +7,10 @@ A complete, modern, and secure voting system using **face recognition** technolo
 ![React](https://img.shields.io/badge/react-18.2+-blue.svg)
 ![MongoDB](https://img.shields.io/badge/mongodb-local-green.svg)
 
+## 📱Project Demo
+
+https://github.com/user-attachments/assets/43116757-b0a6-4a61-a833-efc620a4fd81
+
 ## 🌟 Features
 
 ### Core Functionality
